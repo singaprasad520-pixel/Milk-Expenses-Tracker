@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Milk Expenses Tracker</title>
+<link
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap"
+  rel="stylesheet"
+/>
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<style>
+  /* Base styles */
+  body {
+    margin: 0;
+    font-family: "Inter", sans-serif;
+    background: #f7f7fa;
+    color: #232323;
+    -webkit-font-smoothing: antialiased;
+  }
+  .header {
+    background: #fff;
+    box-shadow: 0 2px 8px #eee;
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  .logo svg {
+    width: 32px;
+    height: 32px;
+  }
+  .nav-tabs button {
+    border: none;
+    background: none;
+    font-weight: 700;
+    font-size: 1rem;
+    color: #aaa;
+    margin-right: 20px;
+    border-bottom: 2px solid transparent;
+    padding-bottom: 3px;
+    cursor: pointer;
+  }
+  .nav-tabs button.active {
+    color: #ff8800;
+    border-color: #ff8800;
+  }
+  .header-right svg {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 5px #bbb;
+  }
+  main {
+    max-width: 480px;
+    padding: 15px;
+    margin: auto;
+    margin-bottom: 90px;
+  }
+  .chip-row {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    margin-bottom: 20px;
+  }
+  .chip {
+    flex: none;
+    background: #fff4db;
+    border-radius: 20px;
+    padding: 7px 15px;
+    font-weight: 600;
+    color: #cc7722;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 0 12px rgba(255 184 38 / 0.5);
+  }
+  .chip i {
+    font-size: 18px;
+  }
+  /* Dashboard Cards */
+  .card {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 3px 10px #eddda7cc;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    color: #a57a01;
+    font-weight: 700;
+    margin-bottom: 10px;
+    font-size: 1.12rem;
+  }
+  .card-value {
+    font-size: 2.3rem;
+    font-weight: 700;
+    color: #ff8800;
+  }
+  .card-value.small {
+    font-size: 1.3rem;
+    color: #463e2a;
+  }
+  .chart {
+    position: relative;
+    width: 100%;
+    height: 150px;
+  }
+  .pie-legend {
+    display: flex;
+    justify-content: center;
+    font-weight: 600;
+    color: #7e6a26;
+    margin-top: 6px;
+    gap: 15px;
+  }
+  .pie-legend span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .pie-legend .dot {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+  }
+  .pie-legend .orange {
+    background-color: #ff8800;
+  }
+  .pie-legend .dark {
+    background-color: #332d22;
+  }
+
+  /* Stats */
+  .stats-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px;
+    background: #fff4db;
+    border-radius: 18px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #a57a01;
+  }
+  .stats-item i {
+    font-size: 1.6rem;
+  }
+  /* Expense List */
+  .expense-list {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  .expense-item {
+    background: #fff;
+    border-radius: 15px;
+    box-shadow: 0 3px 15px #eddda664;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    position: relative;
+  }
+  .expense-icon {
+    width: 46px;
+    height: 46px;
+    background: #fff4db;
+    border-radius: 50%;
+    color: #ff8800;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.8rem;
+  }
+  .expense-body {
+    flex: 1;
+  }
+  .expense-amount {
+    font-weight: 700;
+    font-size: 1.4rem;
+    color: #7e5823;
+  }
+  .expense-meta {
+    font-size: 0.9rem;
+    font-style: italic;
+    color: #a87b24;
+    margin-top: 3px;
+  }
+  .expense-note {
+    font-size: 0.9rem;
+    font-style: italic;
+    color: #c28934;
+  }
+  .expense-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .expense-actions button {
+    background: none;
+    border: none;
+    font-size: 1.3rem;
+    color: #8ebd72;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 10px;
+    transition: background 0.2s ease;
+  }
+  .expense-actions button.edit {
+    color: #4caf50;
+  }
+  .expense-actions button.edit:hover {
+    background: #d0f0d5;
+  }
+  .expense-actions button.delete {
+    color: #ff784e;
+  }
+  .expense-actions button.delete:hover {
+    background: #ffd6cb;
+  }
+  /* Buttons */
+  .add-btn, .export-btn {
+    position: fixed;
+    border: none;
+    border-radius: 50%;
+    font-size: 2rem;
+    color: #fff;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: 0 0 15px #ffae45;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .add-btn {
+    bottom: 90px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    background: #ff8800;
+  }
+  .add-btn:hover {
+    background: #e67300;
+  }
+  .export-btn {
+    bottom: 160px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    background: #fff;
+    border-radius: 30px;
+    color: #ff8800;
+    font-size: 1.4rem;
+    box-shadow: 0 0 15px #ffae4555;
+  }
+  .export-btn:hover {
+    background: #f7e8d9;
+  }
+  /* Modal Form */
+  #modalForm {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255 255 255 / 0.9);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 25px #ffae4566;
+    border-radius: 20px 20px 0 0;
+    padding: 25px 20px 15px 20px;
+    max-width: 480px;
+    margin: 0 auto;
+    z-index: 2000;
+  }
+  #modalForm.active {
+    display: block;
+  }
+  #modalForm h2 {
+    color: #ff8800;
+    margin-bottom: 18px;
+    font-weight: 800;
+    font-size: 1.5rem;
+  }
+  #modalForm input,
+  #modalForm select {
+    width: 100%;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    font-size: 1.1rem;
+    border: 2px solid #fedc90;
+    border-radius: 18px;
+    outline: none;
+  }
+  #modalForm input:focus,
+  #modalForm select:focus {
+    border-color: #ff8800;
+  }
+  #modalForm button {
+    width: 100%;
+    border: none;
+    padding: 14px 0;
+    background: #ff8800;
+    border-radius: 18px;
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  #modalForm button:hover {
+    background: #d76800;
+  }
+  #modalForm button.cancel-btn {
+    background: #ffe9cc;
+    color: #be7e00;
+    margin-top: 10px;
+  }
+  /* Toast */
+  #toast {
+    position: fixed;
+    bottom: 135px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ff8800;
+    color: #fff;
+    padding: 14px 30px;
+    border-radius: 22px;
+    font-weight: 700;
+    font-size: 1.2rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 4000;
+  }
+  #toast.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  /* Responsive */
+  @media (max-width: 600px) {
+    body {
+      font-size: 0.9rem;
+    }
+    #modalForm h2 {
+      font-size: 1.3rem;
+    }
+  }
+  /* Dark Mode */
+  @media (prefers-color-scheme: dark) {
+    body {
+      background: #12121b;
+      color: #e3dfcb;
+    }
+    .header {
+      background: #1c1c28;
+      box-shadow: none;
+      border-bottom: 1px solid #444;
+    }
+    .header .nav-tabs button {
+      color: #bb8b34;
+    }
+    .header .nav-tabs button.active {
+      border-color: #ffbb46;
+      color: #ffbb46;
+    }
+    main {
+      background: #1c1c28;
+    }
+    .card,
+    .expense-item {
+      background: #23232f;
+      box-shadow: 0 6px 24px #7b5f1c93;
+      color: #e3dfcb;
+    }
+    .chip {
+      background: #1e1e2d;
+      color: #bb8b34;
+      box-shadow: 0 0 12px #7b5f1c93;
+    }
+    .card-title,
+    #modalForm h2 {
+      color: #d6a24f;
+    }
+    .card-value,
+    .expense-amount {
+      color: #fbbf57;
+    }
+    .pie-legend,
+    .chip-row {
+      color: #b79f52;
+    }
+    .pie-legend .dark {
+      background-color: #b79f52;
+    }
+    #toast {
+      background: #bb8b34;
+    }
+  }
+</style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <div class="logo" title="Desi Cow">
+        <svg viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="27" cy="27" r="27" fill="#fff8de"/>
+          <path d="M13 15 Q10 8 17 11" stroke="#b17c2b" stroke-width="2.2" fill="none"/>
+          <path d="M41 15 Q44 8 37 11" stroke="#b17c2b" stroke-width="2.2" fill="none"/>
+          <ellipse cx="27" cy="27" rx="12.5" ry="15" fill="#fce4bf" stroke="#ad9057" stroke-width="2.2"/>
+          <ellipse cx="15" cy="27" rx="3.3" ry="7.8" fill="#fff1cf" stroke="#ad9057" stroke-width="1.9"/>
+          <ellipse cx="39" cy="27" rx="3.3" ry="7.8" fill="#fff1cf" stroke="#ad9057" stroke-width="1.9"/>
+          <circle cx="27" cy="23" r="2.2" fill="#ff8800"/>
+          <ellipse cx="23" cy="30" rx="1.15" ry="1.7" fill="#3f3428" stroke="#000" stroke-opacity="0.07"/>
+          <ellipse cx="30" cy="30" rx="1.15" ry="1.7" fill="#3f3428" stroke="#000" stroke-opacity="0.07"/>
+          <ellipse cx="27" cy="36" rx="4.8" ry="2" fill="#fff6db" stroke="#ad9057" stroke-width="1.7"/>
+          <ellipse cx="25" cy="36.1" rx="0.5" ry="0.8" fill="#160b00"/>
+          <ellipse cx="29" cy="36.1" rx="0.5" ry="0.8" fill="#160b00"/>
+        </svg>
+      </div>
+      <nav class="nav-tabs" aria-label="Primary">
+        <button id="dashboardTab" class="active" type="button" onclick="switchTab('dashboard')" aria-current="page">Dashboard</button>
+        <button id="expensesTab" type="button" onclick="switchTab('expenses')">Expenses</button>
+      </nav>
+    </div>
+    <div class="header-right" aria-label="User profile and notifications">
+      <i class="fas fa-bell" title="Notifications" tabindex="0" role="button"></i>
+      <span class="avatar" title="User profile" tabindex="0" role="img" aria-label="User avatar">
+        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <ellipse cx="16" cy="17" rx="8" ry="8" fill="#ffe6bb" />
+          <ellipse cx="16" cy="14" rx="10" ry="8.2" fill="#a9813d" />
+          <path d="M10 14Q16 9 22 14" stroke="#aa8c4d" stroke-width="2" />
+          <ellipse cx="13" cy="18" rx="1.1" ry="1.5" fill="#4a3e28" />
+          <ellipse cx="19" cy="18" rx="1.1" ry="1.5" fill="#4a3e28" />
+          <path d="M13.2 21Q16 23 18.5 21" stroke="#d4aa6c" stroke-width="1.3" />
+          <ellipse cx="12" cy="20" rx="1" ry="0.5" fill="#dbb890" />
+          <ellipse cx="20" cy="20" rx="1" ry="0.5" fill="#dbb890" />
+          <rect x="14" y="25" width="4" height="2" rx="1" fill="#7f96b2" />
+        </svg>
+      </span>
+    </div>
+  </header>
+
+  <main>
+    <section id="dashboardSection" class="dashboard active" aria-label="Dashboard">
+      <div id="dashboardChips" class="chip-row"></div>
+      <div class="card" role="region" aria-labelledby="total-expense">
+        <h2 id="total-expense" class="card-title">Total Milk Expense</h2>
+        <div id="totalExpense" class="card-value">₹0.00</div>
+      </div>
+      <div class="card" role="region" aria-labelledby="avg-price">
+        <h2 id="avg-price" class="card-title">Average Price Per Liter</h2>
+        <div id="avgPrice" class="card-value small">₹0.00</div>
+      </div>
+      <div class="card" role="region" aria-labelledby="expense-chart">
+        <h2 id="expense-chart" class="card-title">Milk Expense Over Time</h2>
+        <div class="chart">
+          <canvas id="barChart" width="400" height="180" role="img" aria-label="Bar chart showing expense over time"></canvas>
+        </div>
+      </div>
+      <div class="card" role="region" aria-labelledby="session-chart">
+        <h2 id="session-chart" class="card-title">Expenses By Session</h2>
+        <div class="chart">
+          <canvas id="pieChart" role="img" aria-label="Pie chart of morning vs evening expenses"></canvas>
+        </div>
+        <div class="pie-legend" aria-hidden="true">
+          <span class="dot orange"></span>Morning <span id="morningPie">₹0</span>
+          <span class="dot dark"></span>Evening <span id="eveningPie">₹0</span>
+        </div>
+      </div>
+      <div class="stats-item" role="contentinfo">
+        <i class="fas fa-glass-whiskey"></i> <span id="totalEntries">0</span> Milk Purchases
+      </div>
+      <div class="stats-item" role="contentinfo">
+        <i class="fas fa-credit-card"></i> ₹<span id="maxExpense">0</span> Max per Purchase
+      </div>
+      <div class="stats-item" role="contentinfo">
+        <i class="fas fa-tint"></i> <span id="maxLiters">0</span> Largest Quantity (L)
+      </div>
+    </section>
+
+    <section id="expensesSection" class="expenses" aria-label="Expenses" hidden>
+      <div id="expensesChips" class="chip-row"></div>
+      <div id="expenseList" class="expense-list" aria-live="polite"></div>
+    </section>
+    <button id="addExpenseBtn" class="add-btn" title="Add expense" aria-label="Add expense">
+      <i class="fas fa-plus"></i>
+    </button>
+    <button id="exportExcelBtn" class="export-btn" title="Export to Excel" aria-label="Export expenses to Excel">
+      <i class="fas fa-file-excel"></i>
+    </button>
+
+    <div id="modalForm" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <form id="modalFormEl" class="add-edit-form" autocomplete="off" novalidate>
+        <h2 id="modalTitle">Add Expense</h2>
+        <label>
+          Date:
+          <input id="inputDate" type="date" required />
+        </label>
+        <label>
+          Session:
+          <select id="inputSession" required>
+            <option>Morning</option>
+            <option>Evening</option>
+          </select>
+        </label>
+        <label>
+          Liters:
+          <input id="inputLiters" type="number" step="0.01" min="0.01" required />
+        </label>
+        <label>
+          Price (₹):
+          <input id="inputPrice" type="number" step="0.01" min="0.01" required />
+        </label>
+        <label>
+          Notes:
+          <input id="inputNotes" type="text" />
+        </label>
+        <button type="submit" id="submitBtn">Add Expense</button>
+        <button type="button" id="cancelBtn" class="cancel-btn">Cancel</button>
+      </form>
+    </div>
+
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <div class="milk-benefits" aria-label="Milk nutritional benefits" style="max-width:480px; margin:3rem auto; background:#fff8de; border-radius:16px; box-shadow:0px 0px 20px #f9e0a0; padding:1rem 1.25rem; color:#855b00;">
+      <h3 style="display:flex; font-weight:700; font-size:1.3rem; margin-bottom:.6rem; gap:.5rem; align-items:center; color:#ff8b00;"><i class="fas fa-info-circle"></i> Milk Benefits</h3>
+      <ul style="padding-left:1.3rem; margin:0; font-size:1rem; line-height:1.5;">
+        <li><strong>Rich source of nutrients:</strong> Calcium, vitamin D, protein, vitamins B & A.</li>
+        <li><strong>Strong bones and teeth:</strong> Supports growth and reduces osteoporosis risk.</li>
+        <li><strong>Complete protein:</strong> Supports muscle maintenance and repair.</li>
+        <li><strong>Heart health:</strong> Potassium supports healthy blood pressure.</li>
+        <li><strong>Weight management:</strong> Helps control appetite and body weight.</li>
+      </ul>
+      <p style="text-align:right; font-size:.85rem; margin-top:.4rem; color:#bb964d; font-style:italic;">Source: Healthline, WebMD, Harvard</p>
+    </div>
+
+    <script>
+      // Data store
+      let expenses = [];
+      let editIndex = -1;
+
+      const toast = document.getElementById("toast");
+      const addExpenseBtn = document.getElementById("addExpenseBtn");
+      const exportExcelBtn = document.getElementById("exportExcelBtn");
+      const modalForm = document.getElementById("modalForm");
+      const modalFormEl = document.getElementById("modalFormEl");
+
+      // Switch tabs
+      function switchTab(tab) {
+        document.getElementById("dashboardSection").hidden = tab !== "dashboard";
+        document.getElementById("expensesSection").hidden = tab !== "expenses";
+        document.getElementById("dashboardTab").classList.toggle("active", tab === "dashboard");
+        document.getElementById("expensesTab").classList.toggle("active", tab === "expenses");
+        addExpenseBtn.style.display = tab === "expenses" ? "flex" : "none";
+        exportExcelBtn.style.display = tab === "expenses" ? "flex" : "none";
+        if (tab === "expenses") {
+          renderExpenses();
+          updateExpensesChips();
+        } else {
+          updateDashboardChips();
+        }
+      }
+
+      addExpenseBtn.addEventListener("click", () => {
+        editIndex = -1;
+        openForm();
+      });
+
+      document.getElementById("cancelBtn").addEventListener("click", closeForm);
+
+      // Open form modal
+      function openForm() {
+        if (editIndex >= 0) {
+          const e = expenses[editIndex];
+          modalFormEl.inputDate.value = e.date;
+          modalFormEl.inputSession.value = e.session;
+          modalFormEl.inputLiters.value = e.liters;
+          modalFormEl.inputPrice.value = e.price;
+          modalFormEl.inputNotes.value = e.notes || "";
+          modalFormEl.submitBtn.textContent = "Update Expense";
+          modalFormEl.querySelector("h2").textContent = "Edit Expense";
+        } else {
+          modalFormEl.reset();
+          modalFormEl.submitBtn.textContent = "Add Expense";
+          modalFormEl.querySelector("h2").textContent = "Add Expense";
+        }
+        modalForm.style.display = "block";
+        modalFormEl.inputDate.focus();
+      }
+
+      // Close form modal
+      function closeForm() {
+        modalForm.style.display = "none";
+        editIndex = -1;
+      }
+
+      // Add/Edit submit
+      modalFormEl.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const newExpense = {
+          date: modalFormEl.inputDate.value,
+          session: modalFormEl.inputSession.value,
+          liters: parseFloat(modalFormEl.inputLiters.value),
+          price: parseFloat(modalFormEl.inputPrice.value),
+          notes: modalFormEl.inputNotes.value.trim(),
+        };
+        if (!newExpense.date || isNaN(newExpense.liters) || newExpense.liters <= 0 || isNaN(newExpense.price) || newExpense.price <= 0) {
+          alert("Please enter valid data for date, liters, and price.");
+          return;
+        }
+        if (editIndex >= 0) {
+          expenses[editIndex] = newExpense;
+          showToast("Expense updated");
+        } else {
+          expenses.unshift(newExpense);
+          showToast("Expense added");
+        }
+        closeForm();
+        renderExpenses();
+        updateDashboard();
+      });
+
+      // Delete expense
+      function deleteExpense(index) {
+        if (confirm("Delete this expense?")) {
+          expenses.splice(index, 1);
+          renderExpenses();
+          updateDashboard();
+          showToast("Expense deleted");
+        }
+      }
+
+      // Edit expense
+      function editExpense(index) {
+        editIndex = index;
+        openForm();
+      }
+
+      // Render expenses
+      function renderExpenses() {
+        const container = document.getElementById("expenseList");
+        const chipContainer = document.getElementById("expensesChips");
+        if (expenses.length === 0) {
+          container.innerHTML = '<p style="text-align:center; color:#999; margin-top:30px;">No expenses yet.</p>';
+          chipContainer.innerHTML = "";
+          return;
+        }
+        chipContainer.innerHTML = "";
+        let html = "";
+        expenses.forEach((e, i) => {
+          html += `
+          <div class="expense-item">
+            <div class="expense-icon" aria-hidden="true"><i class="fas fa-glass-whiskey"></i></div>
+            <div class="expense-body">
+              <div class="expense-amount">${e.liters} L &bull; ₹${e.price.toFixed(2)}</div>
+              <div class="expense-meta">${e.date} &bull; ${e.session}</div>
+              <div class="expense-note">${e.notes || ""}</div>
+            </div>
+            <div class="expense-actions">
+              <button class="edit" aria-label="Edit Expense" onclick="editExpense(${i})"><i class="fas fa-edit"></i></button>
+              <button class="delete" aria-label="Delete Expense" onclick="deleteExpense(${i})"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>`;
+        });
+        container.innerHTML = html;
+      }
+
+      // Update dashboard chips
+      function updateDashboardChips() {
+        if (expenses.length === 0) {
+          document.getElementById("dashboardChips").innerHTML =
+            "<div style='text-align:center; color:#aaa;'>No data available</div>";
+          return;
+        }
+
+        let totalLiters = expenses.reduce((sum, e) => sum + e.liters, 0);
+        let totalSpent = expenses.reduce((sum, e) => sum + e.price, 0);
+        let avgPrice = totalLiters > 0 ? totalSpent / totalLiters : 0;
+
+        document.getElementById("dashboardChips").innerHTML =
+          `<div class="chip"><i class="fas fa-glass-whiskey"></i> ${totalLiters.toFixed(
+            2
+          )} L</div><div class="chip"><i class="fas fa-credit-card"></i> ₹${totalSpent.toFixed(
+            2
+          )} Spent</div><div class="chip"><i class="fas fa-percent"></i> ₹${avgPrice.toFixed(
+            2
+          )} /L</div>`;
+      }
+
+      // Update expense chips
+      function updateExpensesChips() {
+        updateDashboardChips();
+        if (expenses.length === 0) {
+          document.getElementById("expensesChips").innerHTML = "";
+          return;
+        }
+        let totalLiters = expenses.reduce((sum, e) => sum + e.liters, 0);
+        let totalSpent = expenses.reduce((sum, e) => sum + e.price, 0);
+        let avgPrice = totalLiters > 0 ? totalSpent / totalLiters : 0;
+
+        document.getElementById("expensesChips").innerHTML =
+          `<div class="chip"><i class="fas fa-glass-whiskey"></i> ${totalLiters.toFixed(
+            2
+          )} L</div><div class="chip"><i class="fas fa-credit-card"></i> ₹${totalSpent.toFixed(
+            2
+          )} Spent</div><div class="chip"><i class="fas fa-percent"></i> ₹${avgPrice.toFixed(
+            2
+          )} /L</div>`;
+      }
+
+      // Update dashboard numbers and charts
+      function updateDashboard() {
+        if (expenses.length === 0) {
+          document.getElementById("totalExpense").innerText = "₹0.00";
+          document.getElementById("avgPrice").innerText = "₹0.00";
+          document.getElementById("totalEntries").innerText = "0";
+          document.getElementById("maxExpense").innerText = "0";
+          document.getElementById("maxLiters").innerText = "0";
+          document.getElementById("morningPie").innerText = "₹0";
+          document.getElementById("eveningPie").innerText = "₹0";
+          if (window.barChartObj) window.barChartObj.destroy();
+          if (window.pieChartObj) window.pieChartObj.destroy();
+          return;
+        }
+        let totalSpent = expenses.reduce((sum, e) => sum + e.price, 0);
+        let totalLiters = expenses.reduce((sum, e) => sum + e.liters, 0);
+        let avgPrice = totalLiters > 0 ? totalSpent / totalLiters : 0;
+        document.getElementById("totalExpense").innerText = `₹${totalSpent.toFixed(
+          2
+        )}`;
+        document.getElementById("avgPrice").innerText = `₹${avgPrice.toFixed(2)}`;
+        document.getElementById("totalEntries").innerText = expenses.length;
+        document.getElementById("maxExpense").innerText = Math.max.apply(
+          null,
+          expenses.map((e) => e.price)
+        );
+        document.getElementById("maxLiters").innerText = Math.max.apply(
+          null,
+          expenses.map((e) => e.liters)
+        );
+        let morningTotal = expenses
+          .filter((e) => e.session === "Morning")
+          .reduce((sum, e) => sum + e.price, 0);
+        let eveningTotal = expenses
+          .filter((e) => e.session === "Evening")
+          .reduce((sum, e) => sum + e.price, 0);
+        document.getElementById("morningPie").innerText = `₹${morningTotal.toFixed(
+          2
+        )}`;
+        document.getElementById("eveningPie").innerText = `₹${eveningTotal.toFixed(
+          2
+        )}`;
+
+        // Pie and bar data
+        let days = [...new Set(expenses.map((e) => e.date))];
+        let dayTotals = days.map((day) =>
+          expenses
+            .filter((e) => e.date === day)
+            .reduce((sum, e) => sum + e.price, 0)
+        );
+
+        // Bar chart
+        let barCtx = document.getElementById("barChart").getContext("2d");
+        if (window.barChartObj) window.barChartObj.destroy();
+        window.barChartObj = new Chart(barCtx, {
+          type: "bar",
+          data: {
+            labels: days,
+            datasets: [
+              {
+                label: "Expense",
+                data: dayTotals,
+                backgroundColor: "#ff8800",
+                borderRadius: 5,
+              },
+            ],
+          },
+          options: {
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { beginAtZero: true, grid: { color: "#eee" } },
+              x: { grid: { display: false } },
+            },
+            responsive: true,
+            animation: { duration: 400 },
+          },
+        });
+
+        // Pie chart
+        let pieCtx = document.getElementById("pieChart").getContext("2d");
+        if (window.pieChartObj) window.pieChartObj.destroy();
+        window.pieChartObj = new Chart(pieCtx, {
+          type: "doughnut",
+          data: {
+            labels: ["Morning", "Evening"],
+            datasets: [
+              {
+                label: "Session Expense",
+                data: [morningTotal, eveningTotal],
+                backgroundColor: ["#ff8800", "#332d22"],
+              },
+            ],
+          },
+          options: {
+            plugins: { legend: { display: false } },
+            cutout: "65%",
+            animation: { duration: 400 },
+          },
+        });
+      }
+
+      document.getElementById("addExpenseBtn").addEventListener("click", () => {
+        switchTab("expenses");
+        setTimeout(() => {
+          showForm();
+        }, 200);
+      });
+      document
+        .getElementById("exportExcelBtn")
+        .addEventListener("click", () => {
+          if (!expenses.length) {
+            alert("No data to export!");
+            return;
+          }
+          const ws = XLSX.utils.json_to_sheet(
+            expenses.map(({ date, session, liters, price, notes }) => ({
+              Date: date,
+              Session: session,
+              Liters: liters,
+              Price: price,
+              Notes: notes,
+            }))
+          );
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, "Milk Expenses");
+          XLSX.writeFile(wb, "milk_expenses.xlsx");
+          showToast("Exported to Excel!");
+        });
+
+      function showForm(editIdx = -1) {
+        editIndex = editIdx;
+        const form = document.getElementById("modalForm");
+        if (editIndex >= 0) {
+          const exp = expenses[editIndex];
+          modalForm.inputDate.value = exp.date;
+          modalForm.inputSession.value = exp.session;
+          modalForm.inputLiters.value = exp.liters;
+          modalForm.inputPrice.value = exp.price;
+          modalForm.inputNotes.value = exp.notes || "";
+          modalForm.submitBtn.textContent = "Update Expense";
+          modalForm.querySelector("h2").textContent = "Edit Expense";
+        } else {
+          modalForm.reset();
+          modalForm.submitBtn.textContent = "Add Expense";
+          modalForm.querySelector("h2").textContent = "Add Expense";
+        }
+        form.classList.add("active");
+      }
+
+      document.getElementById("cancelBtn").addEventListener("click", () => {
+        document.getElementById("modalForm").classList.remove("active");
+      });
+
+      document.getElementById("modalFormEl").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const date = modalFormEl.inputDate.value;
+        const session = modalFormEl.inputSession.value;
+        const liters = parseFloat(modalFormEl.inputLiters.value);
+        const price = parseFloat(modalFormEl.inputPrice.value);
+        const notes = modalFormEl.inputNotes.value;
+        if (!date || !liters || liters <= 0 || !price || price <= 0) {
+          alert("Please fill date, liters > 0, and price > 0.");
+          return;
+        }
+        if (editIndex >= 0) {
+          expenses[editIndex] = { date, session, liters, price, notes };
+          editIndex = -1;
+          showToast("Expense updated");
+        } else {
+          expenses.unshift({ date, session, liters, price, notes });
+          showToast("Expense added");
+        }
+        document.getElementById("modalForm").classList.remove("active");
+        renderExpenses();
+        updateDashboard();
+      });
+
+      function renderExpenses() {
+        let container = document.getElementById("expenseList");
+        let chipContainer = document.getElementById("expensesChips");
+        if (!expenses.length) {
+          container.innerHTML = `<p style="color:#999; text-align:center; margin-top:40px;">
+            No milk expenses recorded.</p>`;
+          chipContainer.innerHTML = "";
+          return;
+        }
+        chipContainer.innerHTML = "";
+        let html = "";
+        expenses.forEach(({ date, session, liters, price, notes }, i) => {
+          html += `<div class="expense-item">
+            <div class="expense-icon">
+              <i class="fas fa-glass-whiskey"></i>
+            </div>
+            <div class="expense-body">
+              <div class="expense-amount">${liters} L &bull; ₹${price.toFixed(
+            2
+          )}</div>
+              <div class="expense-meta">${date} &bull; ${session}</div>
+              <div class="expense-note">${notes || ""}</div>
+            </div>
+            <div class="expense-actions">
+              <button class="edit" aria-label="Edit" onclick="editExpense(${i})">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="delete" aria-label="Delete" onclick="deleteExpense(${i})">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>`;
+        });
+        container.innerHTML = html;
+      }
+
+      function editExpense(i) {
+        showForm(i);
+      }
+
+      function deleteExpense(i) {
+        if (confirm("Are you sure you want to delete this expense?")) {
+          expenses.splice(i, 1);
+          renderExpenses();
+          updateDashboard();
+          showToast("Expense deleted");
+        }
+      }
+
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        toast.textContent = msg;
+        toast.classList.add("visible");
+        setTimeout(() => toast.classList.remove("visible"), 1500);
+      }
+
+      // Initial load
+      switchTab("dashboard");
+      renderExpenses();
+      updateDashboard();
+    </script>
+  </body>
+</html>
