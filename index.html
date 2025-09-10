@@ -1366,8 +1366,9 @@
         emptyDiv.style.display = 'none';
         canvas.style.display = 'block';
         
-        // Prepare data
-        const days = [...new Set(this.data.expenses.map(e => e.date))].sort().slice(-7);
+        // Prepare data - limit to last 7 days for mobile
+        const isMobile = window.innerWidth <= 768;
+        const days = [...new Set(this.data.expenses.map(e => e.date))].sort().slice(isMobile ? -5 : -7);
         const dayTotals = days.map(day =>
           this.data.expenses
             .filter(e => e.date === day)
@@ -1389,8 +1390,8 @@
               data: dayTotals,
               backgroundColor: 'rgba(99, 102, 241, 0.8)',
               borderColor: 'rgba(99, 102, 241, 1)',
-              borderWidth: 2,
-              borderRadius: 8,
+              borderWidth: 1,
+              borderRadius: isMobile ? 4 : 8,
               borderSkipped: false
             }]
           },
@@ -1405,6 +1406,7 @@
                 beginAtZero: true,
                 ticks: { 
                   color: 'rgba(255, 255, 255, 0.7)',
+                  font: { size: isMobile ? 10 : 12 },
                   callback: function(value) {
                     return '₹' + value;
                   }
@@ -1414,8 +1416,16 @@
                 }
               },
               x: {
-                ticks: { color: 'rgba(255, 255, 255, 0.7)' },
+                ticks: { 
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  font: { size: isMobile ? 9 : 11 }
+                },
                 grid: { display: false }
+              }
+            },
+            elements: {
+              bar: {
+                borderWidth: isMobile ? 1 : 2
               }
             }
           }
@@ -1448,6 +1458,8 @@
           this.data.charts.pieChart.destroy();
         }
         
+        const isMobile = window.innerWidth <= 768;
+        
         // Create new chart
         const ctx = canvas.getContext('2d');
         this.data.charts.pieChart = new Chart(ctx, {
@@ -1464,7 +1476,7 @@
                 'rgba(16, 185, 129, 1)',
                 'rgba(245, 158, 11, 1)'
               ],
-              borderWidth: 2
+              borderWidth: isMobile ? 1 : 2
             }]
           },
           options: {
@@ -1475,15 +1487,17 @@
                 position: 'bottom',
                 labels: {
                   color: 'rgba(255, 255, 255, 0.8)',
-                  padding: 20,
+                  padding: isMobile ? 15 : 20,
                   font: {
-                    size: 14,
+                    size: isMobile ? 11 : 14,
                     weight: 'bold'
-                  }
+                  },
+                  usePointStyle: true,
+                  pointStyle: 'circle'
                 }
               }
             },
-            cutout: '60%'
+            cutout: isMobile ? '50%' : '60%'
           }
         });
       },
