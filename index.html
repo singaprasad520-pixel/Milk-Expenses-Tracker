@@ -1574,9 +1574,16 @@
         }
         
         toast.classList.add('visible');
+        
+        // Auto-hide toast
         setTimeout(() => {
           toast.classList.remove('visible');
         }, 4000);
+        
+        // Add haptic feedback on mobile devices
+        if ('vibrate' in navigator) {
+          navigator.vibrate(type === 'success' ? [50] : [100, 50, 100]);
+        }
       },
       
       render() {
